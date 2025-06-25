@@ -350,7 +350,7 @@ jobs:
 ```
 
 ### Переменные окружения
-- `TELEGRAM_TOKEN` — токен бота
+- `TELEGRAM_BOT_TOKEN` — токен бота
 - `OPENMETEO_URL` — базовый URL сервиса погоды
 - `DB_PATH` — путь к файлу SQLite
 - `WEBHOOK_URL` — публичный адрес приложения
