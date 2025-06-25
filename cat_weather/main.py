@@ -24,7 +24,8 @@ async def ensure_webhook(bot: Bot, base_url: str) -> None:
             logging.info("Webhook already registered: %s", expected)
     except Exception as e:  # pragma: no cover - network errors
         logging.error("Failed to register webhook: %s", e)
-        raise
+        # Do not interrupt startup if Telegram is unreachable
+        return
 
 
 async def handle_webhook(request: web.Request) -> web.Response:
