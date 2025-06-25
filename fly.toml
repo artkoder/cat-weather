@@ -1,4 +1,3 @@
-
 app = "cat-weather"
 primary_region = "fra"
 
@@ -22,4 +21,3 @@ primary_region = "fra"
   [[services.ports]]
     handlers = ["http"]
     port = 8080
-
