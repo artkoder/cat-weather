@@ -21,10 +21,16 @@ aiogram_stub.filters = types.SimpleNamespace(Command=object)
 aiogram_stub.types = types.SimpleNamespace(Message=object, ChatMemberUpdated=object)
 sys.modules.setdefault("aiogram", aiogram_stub)
 
+
 os.environ.setdefault("WEBHOOK_URL", "https://test.local")
 
 from cat_weather.main import ensure_webhook
 
+
+
+class DummyWebhookInfo:
+    def __init__(self, url: str):
+        self.url = url
 
 
 class DummyBot:
@@ -32,14 +38,14 @@ class DummyBot:
         self.url = url
         self.calls = []
 
-    async def api_request(self, method: str, data=None):
-        self.calls.append((method, data))
-        if method == "getWebhookInfo":
-            return {"result": {"url": self.url}}
-        if method == "setWebhook":
-            self.url = data["url"]
-            return {"ok": True}
-        raise NotImplementedError(method)
+    async def get_webhook_info(self):
+        self.calls.append(("get_webhook_info", None))
+        return DummyWebhookInfo(self.url)
+
+    async def set_webhook(self, url: str):
+        self.calls.append(("set_webhook", url))
+        self.url = url
+        return True
 
 
 
@@ -48,7 +54,7 @@ def test_ensure_webhook_registers_when_missing():
     asyncio.run(ensure_webhook(bot, "https://example.com"))
     assert bot.url == "https://example.com/webhook"
 
-    assert ("setWebhook", {"url": "https://example.com/webhook"}) in bot.calls
+    assert ("set_webhook", "https://example.com/webhook") in bot.calls
 
 
 

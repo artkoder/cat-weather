@@ -29,20 +29,16 @@ async def ensure_webhook(bot: Bot, base_url: str, attempts: int = 8) -> None:
     backoff = 2  # секунд
     for i in range(1, attempts + 1):
         try:
-            info = await bot.api_request("getWebhookInfo")
-            current = info.get("result", {}).get("url")
+            info = await bot.get_webhook_info()
+            current = getattr(info, "url", "")
             if current == expected:
                 logging.info("Webhook уже зарегистрирован – %s", current)
                 return
 
-            logging.info(
-                "Попытка %s/%s: регистрирую %s", i, attempts, expected
-            )
-            resp = await bot.api_request("setWebhook", {"url": expected})
-            if resp.get("ok"):
-                logging.info("Webhook зарегистрирован")
-                return
-            raise RuntimeError(resp)
+            logging.info("Попытка %s/%s: регистрирую %s", i, attempts, expected)
+            await bot.set_webhook(expected)
+            logging.info("Webhook зарегистрирован")
+            return
         except Exception as e:
             if "resolve host" in str(e):
                 logging.warning("DNS не готов, жду %s сек…", backoff)
