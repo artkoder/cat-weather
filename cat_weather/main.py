@@ -1,6 +1,7 @@
 
+import asyncio
 import logging
-from typing import Any
+import os
 
 from aiohttp import web
 from aiogram import Bot, Dispatcher
@@ -9,23 +10,47 @@ from .config import Config
 from .database import Database
 
 
-async def ensure_webhook(bot: Bot, base_url: str) -> None:
-    """Make sure Telegram webhook matches base_url."""
+FLY_APP_NAME = os.getenv("FLY_APP_NAME")
+WEBHOOK_URL = os.getenv(
+    "WEBHOOK_URL", f"https://{FLY_APP_NAME}.fly.dev" if FLY_APP_NAME else None
+)
+if not WEBHOOK_URL:
+    raise RuntimeError(
+        "WEBHOOK_URL не задан и FLY_APP_NAME отсутствует – "
+        "нечего регистрировать в Telegram"
+    )
+os.environ.setdefault("WEBHOOK_URL", WEBHOOK_URL)
+
+
+async def ensure_webhook(bot: Bot, base_url: str, attempts: int = 8) -> None:
+    """Регистрирует webhook, повторяя попытки, пока DNS не станет доступным."""
     expected = base_url.rstrip("/") + "/webhook"
-    try:
 
-        info = await bot.get_webhook_info()
-        current = getattr(info, "url", "")
-        if current != expected:
-            await bot.set_webhook(expected)
+    backoff = 2  # секунд
+    for i in range(1, attempts + 1):
+        try:
+            info = await bot.api_request("getWebhookInfo")
+            current = info.get("result", {}).get("url")
+            if current == expected:
+                logging.info("Webhook уже зарегистрирован – %s", current)
+                return
 
-            logging.info("Webhook registered: %s", expected)
-        else:
-            logging.info("Webhook already registered: %s", expected)
-    except Exception as e:  # pragma: no cover - network errors
-        logging.error("Failed to register webhook: %s", e)
-        # Do not interrupt startup if Telegram is unreachable
-        return
+            logging.info(
+                "Попытка %s/%s: регистрирую %s", i, attempts, expected
+            )
+            resp = await bot.api_request("setWebhook", {"url": expected})
+            if resp.get("ok"):
+                logging.info("Webhook зарегистрирован")
+                return
+            raise RuntimeError(resp)
+        except Exception as e:
+            if "resolve host" in str(e):
+                logging.warning("DNS не готов, жду %s сек…", backoff)
+                await asyncio.sleep(backoff)
+                backoff *= 2
+            else:
+                raise
+    logging.error("Не удалось зарегистрировать webhook за %s попыток", attempts)
 
 
 async def handle_webhook(request: web.Request) -> web.Response:
@@ -53,11 +78,12 @@ def create_app() -> web.Application:
     app["config"] = config
 
     app.router.add_post("/webhook", handle_webhook)
+    app.router.add_get("/", lambda r: web.Response(text="ok"))
 
     async def on_startup(app: web.Application) -> None:
 
         try:
-            await ensure_webhook(bot, config.webhook_url)
+            await ensure_webhook(bot, WEBHOOK_URL)
         except Exception:
             # ensure_webhook already logged the error
             raise
