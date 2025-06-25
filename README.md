@@ -13,4 +13,8 @@ DB_PATH=weather.db python -m cat_weather.main
 
 WEBHOOK_URL must be a public HTTPS URL accessible by Telegram.
 
+The application will keep retrying webhook registration in the
+background until the URL becomes reachable. This is useful when DNS
+records for a freshly deployed app have not propagated yet.
+
 ```

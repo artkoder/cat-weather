@@ -2,6 +2,8 @@
 import logging
 from typing import Any
 
+import asyncio
+import contextlib
 from aiohttp import web
 from aiogram import Bot, Dispatcher
 
@@ -26,6 +28,20 @@ async def ensure_webhook(bot: Bot, base_url: str) -> None:
         logging.error("Failed to register webhook: %s", e)
         # Do not interrupt startup if Telegram is unreachable
         return
+
+
+async def retry_webhook(bot: Bot, base_url: str, interval: int = 30) -> None:
+    """Keep trying to register the webhook until successful."""
+    expected = base_url.rstrip("/") + "/webhook"
+    while True:
+        await ensure_webhook(bot, base_url)
+        try:
+            info = await bot.get_webhook_info()
+            if getattr(info, "url", "") == expected:
+                break
+        except Exception:
+            pass
+        await asyncio.sleep(interval)
 
 
 async def handle_webhook(request: web.Request) -> web.Response:
@@ -55,16 +71,19 @@ def create_app() -> web.Application:
     app.router.add_post("/webhook", handle_webhook)
 
     async def on_startup(app: web.Application) -> None:
-
-        try:
-            await ensure_webhook(bot, config.webhook_url)
-        except Exception:
-            # ensure_webhook already logged the error
-            raise
+        # Try once at startup, then continue retrying in background
+        await ensure_webhook(bot, config.webhook_url)
+        app['webhook_task'] = asyncio.create_task(
+            retry_webhook(bot, config.webhook_url)
+        )
 
 
     async def on_cleanup(app: web.Application) -> None:
-
+        task: asyncio.Task | None = app.get('webhook_task')
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
         await bot.session.close()
 
     app.on_startup.append(on_startup)
