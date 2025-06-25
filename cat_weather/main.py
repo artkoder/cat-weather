@@ -4,7 +4,8 @@ import logging
 import os
 
 from aiohttp import web
-from aiogram import Bot, Dispatcher
+from aiogram import Dispatcher
+from .scheduler_bot import SchedulerBot
 
 from .config import Config
 from .database import Database
@@ -22,39 +23,30 @@ if not WEBHOOK_URL:
 os.environ.setdefault("WEBHOOK_URL", WEBHOOK_URL)
 
 
-async def ensure_webhook(bot: Bot, base_url: str, attempts: int = 8) -> None:
-    """Регистрирует webhook, повторяя попытки, пока DNS не станет доступным."""
+GET_WEBHOOK_INFO = "getWebhookInfo"
+SET_WEBHOOK = "setWebhook"
+
+
+async def ensure_webhook(bot: SchedulerBot, base_url: str) -> None:
+    """Ensure Telegram webhook matches the configured URL."""
     expected = base_url.rstrip("/") + "/webhook"
-
-    backoff = 2  # секунд
-    for i in range(1, attempts + 1):
-        try:
-            info = await bot.api_request("getWebhookInfo")
-            current = info.get("result", {}).get("url")
-            if current == expected:
-                logging.info("Webhook уже зарегистрирован – %s", current)
-                return
-
-            logging.info(
-                "Попытка %s/%s: регистрирую %s", i, attempts, expected
-            )
-            resp = await bot.api_request("setWebhook", {"url": expected})
-            if resp.get("ok"):
-                logging.info("Webhook зарегистрирован")
-                return
-            raise RuntimeError(resp)
-        except Exception as e:
-            if "resolve host" in str(e):
-                logging.warning("DNS не готов, жду %s сек…", backoff)
-                await asyncio.sleep(backoff)
-                backoff *= 2
-            else:
-                raise
-    logging.error("Не удалось зарегистрировать webhook за %s попыток", attempts)
+    try:
+        info = await bot.api_request(GET_WEBHOOK_INFO)
+        current = info.get("result", {}).get("url")
+        if current == expected:
+            logging.info("Webhook уже зарегистрирован – %s", current)
+            return
+        resp = await bot.api_request(SET_WEBHOOK, {"url": expected})
+        if resp.get("ok"):
+            logging.info("Webhook зарегистрирован")
+        else:
+            logging.warning("Не удалось зарегистрировать webhook: %s", resp)
+    except Exception as e:  # pragma: no cover - network errors
+        logging.warning("Ошибка при регистрации webhook: %s", e)
 
 
 async def handle_webhook(request: web.Request) -> web.Response:
-    bot: Bot = request.app["bot"]
+    bot: SchedulerBot = request.app["bot"]
     dp: Dispatcher = request.app["dp"]
     data = await request.json()
     await dp.feed_webhook_update(bot, data)
@@ -63,7 +55,7 @@ async def handle_webhook(request: web.Request) -> web.Response:
 
 def create_app() -> web.Application:
     config = Config.from_env()
-    bot = Bot(config.telegram_token)
+    bot = SchedulerBot(config.telegram_token)
     dp = Dispatcher()
     db = Database(config.db_path)
     dp["db"] = db
@@ -81,12 +73,10 @@ def create_app() -> web.Application:
     app.router.add_get("/", lambda r: web.Response(text="ok"))
 
     async def on_startup(app: web.Application) -> None:
-
         try:
             await ensure_webhook(bot, WEBHOOK_URL)
         except Exception:
-            # ensure_webhook already logged the error
-            raise
+            logging.exception("Webhook init failed – continuing without it")
 
 
     async def on_cleanup(app: web.Application) -> None:
