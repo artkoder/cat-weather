@@ -1,8 +1,8 @@
 
 
-import logging
-from typing import Any
-
+        info = await bot.get_webhook_info()
+        current = getattr(info, "url", "")
+            await bot.set_webhook(expected)
 from aiohttp import web
 from aiogram import Bot, Dispatcher
 
