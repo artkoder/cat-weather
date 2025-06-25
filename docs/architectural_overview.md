@@ -329,6 +329,7 @@ primary_region = "fra"
   dockerfile = "Dockerfile"
 [env]
   DB_PATH = "/data/weather.db"
+  WEBHOOK_URL = "https://cat-weather.fly.dev"
 ```
 
 ### GitHub Actions — `.github/workflows/deploy.yml`
@@ -352,6 +353,7 @@ jobs:
 - `TELEGRAM_TOKEN` — токен бота
 - `OPENMETEO_URL` — базовый URL сервиса погоды
 - `DB_PATH` — путь к файлу SQLite
+- `WEBHOOK_URL` — публичный адрес приложения
 - `TZ_OFFSET` — часовой пояс по умолчанию
 
 ## 10. Roadmap & Next Steps
