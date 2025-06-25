@@ -1,0 +1,23 @@
+app = "cat-weather"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  DB_PATH = "/data/weather.db"
+
+[mounts]
+  source = "data"
+  destination = "/data"
+
+[experimental]
+  enable_ipv6 = true
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 8080
