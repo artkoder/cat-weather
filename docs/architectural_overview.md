@@ -16,6 +16,139 @@
 - **Контейнеризация**: Docker + Fly.io (fly.toml)
 - **CI/CD**: GitHub Actions, автоматический деплой на Fly.io
 
+### WeatherService
+
+#### Open-Meteo API
+Базовый URL
+
+```bash
+https://api.open-meteo.com/v1/forecast
+```
+
+Параметры запроса
+
+- `latitude` (обязательно) — широта в десятичном формате, например `54.7104`
+- `longitude` (обязательно) — долгота в десятичном формате, например `20.4522`
+- `current_weather` (обязательно) — `true` для получения текущей погоды
+- `hourly` (опционально) — список почасовых параметров через запятую:
+  `temperature_2m,weathercode,windspeed_10m,winddirection_10m`
+- `daily` (опционально) — список суточных параметров:
+  `temperature_2m_max,temperature_2m_min,weathercode`
+- `timezone` (обязательно) — часовой пояс в формате IANA или смещение `+03:00`
+- `(опционально) temperature_unit` — `celsius` или `fahrenheit` (по умолчанию `celsius`)
+- `(опционально) wind_speed_unit` — `kmh` (по умолчанию) или `ms`, `mph`, `kn`
+- `(опционально) precipitation_unit` — `mm` (по умолчанию) или `inch`
+
+Пример запроса
+
+```bash
+curl "https://api.open-meteo.com/v1/forecast?latitude=54.7104&longitude=20.4522&current_weather=true&hourly=temperature_2m,weathercode,windspeed_10m,winddirection_10m&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=+03:00"
+```
+
+Структура ответа
+
+```json
+{
+  "latitude": 54.7104,
+  "longitude": 20.4522,
+  "generationtime_ms": 0.123,
+  "utc_offset_seconds": 10800,
+  "timezone": "UTC+3",
+  "current_weather": {
+    "temperature": 18.7,
+    "windspeed": 3.4,
+    "winddirection": 245,
+    "weathercode": 3,
+    "time": "2025-06-25T14:00"
+  },
+  "hourly": {
+    "time": ["2025-06-25T14:00", "..."],
+    "temperature_2m": [18.7, "..."],
+    "weathercode": [3, "..."],
+    "windspeed_10m": [3.4, "..."],
+    "winddirection_10m": [245, "..."]
+  },
+  "daily": {
+    "time": ["2025-06-25", "2025-06-26"],
+    "temperature_2m_max": [21.3, 22.1],
+    "temperature_2m_min": [12.4, 13.0],
+    "weathercode": [1, 2]
+  }
+}
+```
+
+#### Geocoding
+URL
+
+```bash
+https://geocoding-api.open-meteo.com/v1/search
+```
+
+Параметры
+
+- `name` (обязательно) — строка запроса (город, почтовый индекс)
+- `count` (опционально) — число результатов (по умолчанию `10`)
+
+Пример
+
+```bash
+curl "https://geocoding-api.open-meteo.com/v1/search?name=Kaliningrad&count=5"
+```
+
+Фрагмент ответа
+
+```json
+{
+  "results": [
+    {
+      "id": 2961082,
+      "name": "Kaliningrad",
+      "latitude": 54.7104,
+      "longitude": 20.4522,
+      "country": "Russia",
+      "admin1": "Kaliningrad Oblast",
+      "timezone": "Europe/Kaliningrad"
+    }
+    // ...
+  ]
+}
+```
+
+#### Методы
+
+```python
+def fetch_current(lat: float, lon: float, tz: str) -> CurrentWeather:
+    """
+    Запрашивает текущую погоду у Open-Meteo.
+    Параметры:
+      - lat, lon: координаты города
+      - tz: смещение или IANA-часовой пояс
+    Возвращает:
+      CurrentWeather(
+        temperature: float,
+        weathercode: int,
+        windspeed: float,
+        winddirection: int,
+        time: datetime
+      )
+    """
+
+def fetch_tomorrow(lat: float, lon: float, tz: str) -> TomorrowForecast:
+    """
+    Запрашивает ежедневный прогноз у Open-Meteo.
+    Параметры:
+      - lat, lon: координаты города
+      - tz: смещение или IANA-часовой пояс
+    Возвращает:
+      TomorrowForecast(
+        date: date,
+        temp_max: float,
+        temp_min: float,
+        weathercode: int
+      )
+    """
+```
+
 ## 3. Архитектура
 Telegram Weather Bot построен по модульному принципу и состоит из следующих основных слоёв и компонентов:
 
