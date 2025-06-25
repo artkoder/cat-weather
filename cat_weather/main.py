@@ -1,3 +1,4 @@
+
 import logging
 from typing import Any
 
@@ -12,10 +13,12 @@ async def ensure_webhook(bot: Bot, base_url: str) -> None:
     """Make sure Telegram webhook matches base_url."""
     expected = base_url.rstrip("/") + "/webhook"
     try:
+
         info = await bot.get_webhook_info()
         current = getattr(info, "url", "")
         if current != expected:
             await bot.set_webhook(expected)
+
             logging.info("Webhook registered: %s", expected)
         else:
             logging.info("Webhook already registered: %s", expected)
@@ -51,13 +54,16 @@ def create_app() -> web.Application:
     app.router.add_post("/webhook", handle_webhook)
 
     async def on_startup(app: web.Application) -> None:
+
         try:
             await ensure_webhook(bot, config.webhook_url)
         except Exception:
             # ensure_webhook already logged the error
             raise
 
+
     async def on_cleanup(app: web.Application) -> None:
+
         await bot.session.close()
 
     app.on_startup.append(on_startup)

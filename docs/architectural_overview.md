@@ -353,7 +353,9 @@ jobs:
 - `TELEGRAM_BOT_TOKEN` — токен бота
 - `OPENMETEO_URL` — базовый URL сервиса погоды
 - `DB_PATH` — путь к файлу SQLite
+
 - `WEBHOOK_URL` — публичный адрес приложения (должен быть доступен по HTTPS)
+
 - `TZ_OFFSET` — часовой пояс по умолчанию
 
 ## 10. Roadmap & Next Steps
