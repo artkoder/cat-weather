@@ -11,9 +11,9 @@ class Config:
 
     @classmethod
     def from_env(cls) -> "Config":
-        token = os.environ.get("TELEGRAM_TOKEN")
+        token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN")
         if not token:
-            raise RuntimeError("TELEGRAM_TOKEN is required")
+            raise RuntimeError("TELEGRAM_BOT_TOKEN is required")
 
         webhook_url = os.environ.get("WEBHOOK_URL")
         if not webhook_url:
