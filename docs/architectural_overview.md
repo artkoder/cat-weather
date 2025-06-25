@@ -323,15 +323,12 @@ CMD ["python", "bot.py"]
 
 ### fly.toml
 ```
-app = "telegram-weather-bot"
-primary_region = "waw"
+app = "cat-weather"
+primary_region = "fra"
 [build]
-  image = "python:3.11-slim"
+  dockerfile = "Dockerfile"
 [env]
-  TELEGRAM_TOKEN = "${TELEGRAM_TOKEN}"
-  OPENMETEO_URL = "${OPENMETEO_URL}"
   DB_PATH = "/data/weather.db"
-  TZ_OFFSET = "${TZ_OFFSET}"
 ```
 
 ### GitHub Actions — `.github/workflows/deploy.yml`
