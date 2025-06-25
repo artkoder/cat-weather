@@ -1,46 +1,98 @@
+"""fly.toml snippet
+app = "cat-weather"
 
-import logging
-from typing import Any
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
 
-from aiohttp import web
-from aiogram import Bot, Dispatcher
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+"""
 
-from .config import Config
-from .database import Database
+import asyncio
+import contextlib
+import os
+from urllib.parse import urlparse
+try:
+    from aiogram.exceptions import TelegramBadRequest
+except Exception:  # pragma: no cover - fallback for tests
+    class TelegramBadRequest(Exception):
+        pass
+try:
+    from aiogram.types import Update
+except Exception:  # pragma: no cover - fallback for tests
+    class Update(dict):
+        def __init__(self, **data):
+            super().__init__(**data)
+async def ensure_webhook(bot: Bot, base_url: str, *, attempts: int = 5) -> None:
+    """Ensure Telegram webhook is set with retries."""
+    delay = 5
+    for attempt in range(1, attempts + 1):
+        try:
+            info = await bot.get_webhook_info()
+            current = getattr(info, "url", "")
+            if current != expected:
+                await bot.set_webhook(expected)
+                logging.info("Webhook registered: %s", expected)
+            else:
+                logging.info("Webhook already registered: %s", expected)
+            return
+        except Exception as e:
+            if isinstance(e, TelegramBadRequest):
+                msg = e.message if hasattr(e, "message") else str(e)
+            else:
+                msg = str(e)
+            logging.warning(
+                "Webhook setup failed on attempt %d/%d: %s", attempt, attempts, msg
+            )
+            if attempt < attempts:
+                await asyncio.sleep(delay)
+                delay *= 2
+            else:
+                logging.error("Could not register webhook after %d attempts", attempts)
+    token = os.environ.get("TELEGRAM_TOKEN")
+    webhook_base = os.environ.get("WEBHOOK_URL")
+    if not token:
+        raise RuntimeError("TELEGRAM_TOKEN environment variable is required")
+    if not webhook_base:
+        raise RuntimeError("WEBHOOK_URL environment variable is required")
 
+    db_path = os.environ.get("DB_PATH", "weather.db")
 
-async def ensure_webhook(bot: Bot, base_url: str) -> None:
-    """Make sure Telegram webhook matches base_url."""
-    expected = base_url.rstrip("/") + "/webhook"
-    try:
+    bot = Bot(token)
+    db = Database(db_path)
+    from .handlers import tz, channels
 
-        info = await bot.get_webhook_info()
-        current = getattr(info, "url", "")
-        if current != expected:
-            await bot.set_webhook(expected)
+    webhook_url = webhook_base.rstrip("/") + "/webhook"
+    path = urlparse(webhook_url).path or "/webhook"
 
-            logging.info("Webhook registered: %s", expected)
-        else:
-            logging.info("Webhook already registered: %s", expected)
-    except Exception as e:  # pragma: no cover - network errors
-        logging.error("Failed to register webhook: %s", e)
-        raise
+    app["webhook_url"] = webhook_url
 
+    async def handle_webhook(request: web.Request) -> web.Response:
+        data = await request.json()
+        update = Update(**data)
+        await dp.process_update(update)
+        return web.Response(text="ok")
+    app.router.add_post(path, handle_webhook)
+        await bot.start()
+        app["wh_task"] = asyncio.create_task(ensure_webhook(bot, webhook_base))
 
-async def handle_webhook(request: web.Request) -> web.Response:
-    bot: Bot = request.app["bot"]
-    dp: Dispatcher = request.app["dp"]
-    data = await request.json()
-    await dp.feed_webhook_update(bot, data)
-    return web.Response(text="ok")
+        await bot.delete_webhook()
+        task = app.get("wh_task")
+        if task:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
 
-
-def create_app() -> web.Application:
-    config = Config.from_env()
-    bot = Bot(config.telegram_token)
-    dp = Dispatcher()
-    db = Database(config.db_path)
-    dp["db"] = db
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
 
     from .handlers import channels, tz
     dp.include_router(tz.router)
