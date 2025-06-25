@@ -5,6 +5,23 @@ import types
 
 # Provide a minimal aiohttp stub so cat_weather.main can be imported
 aiohttp_stub = types.ModuleType("aiohttp")
+
+class DummySession:
+    def post(self, url, json=None):
+        class Resp:
+            async def __aenter__(self2):
+                return self2
+            async def __aexit__(self2, exc_type, exc, tb):
+                pass
+            def raise_for_status(self2):
+                pass
+            async def json(self2):
+                return {}
+        return Resp()
+    async def close(self):
+        pass
+
+aiohttp_stub.ClientSession = DummySession
 aiohttp_stub.web = types.SimpleNamespace(
     Request=object,
     Response=object,
