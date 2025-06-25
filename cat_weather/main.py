@@ -1,3 +1,5 @@
+
+
 import logging
 from typing import Any
 
@@ -51,13 +53,16 @@ def create_app() -> web.Application:
     app.router.add_post("/webhook", handle_webhook)
 
     async def on_startup(app: web.Application) -> None:
+
         try:
             await ensure_webhook(bot, config.webhook_url)
         except Exception:
             # ensure_webhook already logged the error
             raise
 
+
     async def on_cleanup(app: web.Application) -> None:
+
         await bot.session.close()
 
     app.on_startup.append(on_startup)
