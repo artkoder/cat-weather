@@ -1,11 +1,23 @@
-app = "telegram-weather-bot"
-primary_region = "waw"
+app = "cat-weather"
+primary_region = "fra"
 
 [build]
-  image = "python:3.11-slim"
+  dockerfile = "Dockerfile"
 
 [env]
-  TELEGRAM_TOKEN = "${TELEGRAM_TOKEN}"
-  OPENMETEO_URL = "${OPENMETEO_URL}"
   DB_PATH = "/data/weather.db"
-  TZ_OFFSET = "${TZ_OFFSET}"
+
+[mounts]
+  source = "data"
+  destination = "/data"
+
+[experimental]
+  enable_ipv6 = true
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 8080
