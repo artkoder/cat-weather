@@ -1,5 +1,4 @@
 
-
 import logging
 from typing import Any
 
@@ -14,10 +13,12 @@ async def ensure_webhook(bot: Bot, base_url: str) -> None:
     """Make sure Telegram webhook matches base_url."""
     expected = base_url.rstrip("/") + "/webhook"
     try:
-        info = await bot.api_request("getWebhookInfo")
-        current = info.get("url", "")
+
+        info = await bot.get_webhook_info()
+        current = getattr(info, "url", "")
         if current != expected:
-            await bot.api_request("setWebhook", {"url": expected})
+            await bot.set_webhook(expected)
+
             logging.info("Webhook registered: %s", expected)
         else:
             logging.info("Webhook already registered: %s", expected)
