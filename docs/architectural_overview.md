@@ -245,6 +245,12 @@ Telegram Weather Bot построен по модульному принципу
 • **Ответ бота**: подтверждение установки
 • **Логирование**: INFO начало, SUCCESS или ERROR
 
+### Авто-регистрация каналов
+• **Trigger**: событие `my_chat_member`
+• **Handler**: `handlers.channels.track_bot_in_chat`
+• **DB действия**: добавление/удаление записей в `channels`
+• **Логирование**: INFO добавление или удаление канала
+
 ### `/channels`
 • **Trigger**: команда от суперадмина
 • **Handler**: `handlers.channels.list_channels`
@@ -317,15 +323,13 @@ CMD ["python", "bot.py"]
 
 ### fly.toml
 ```
-app = "telegram-weather-bot"
-primary_region = "waw"
+app = "cat-weather"
+primary_region = "fra"
 [build]
-  image = "python:3.11-slim"
+  dockerfile = "Dockerfile"
 [env]
-  TELEGRAM_TOKEN = "${TELEGRAM_TOKEN}"
-  OPENMETEO_URL = "${OPENMETEO_URL}"
   DB_PATH = "/data/weather.db"
-  TZ_OFFSET = "${TZ_OFFSET}"
+  WEBHOOK_URL = "https://cat-weather.fly.dev"
 ```
 
 ### GitHub Actions — `.github/workflows/deploy.yml`
@@ -346,9 +350,10 @@ jobs:
 ```
 
 ### Переменные окружения
-- `TELEGRAM_TOKEN` — токен бота
+- `TELEGRAM_BOT_TOKEN` — токен бота
 - `OPENMETEO_URL` — базовый URL сервиса погоды
 - `DB_PATH` — путь к файлу SQLite
+- `WEBHOOK_URL` — публичный адрес приложения
 - `TZ_OFFSET` — часовой пояс по умолчанию
 
 ## 10. Roadmap & Next Steps
