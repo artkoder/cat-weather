@@ -16,6 +16,7 @@
 - **Контейнеризация**: Docker + Fly.io (fly.toml)
 - **CI/CD**: GitHub Actions, автоматический деплой на Fly.io
 
+
 ### WeatherService
 
 #### Open-Meteo API
@@ -148,6 +149,7 @@ def fetch_tomorrow(lat: float, lon: float, tz: str) -> TomorrowForecast:
       )
     """
 ```
+
 
 ## 3. Архитектура
 Telegram Weather Bot построен по модульному принципу и состоит из следующих основных слоёв и компонентов:
