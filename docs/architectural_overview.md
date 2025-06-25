@@ -245,6 +245,12 @@ Telegram Weather Bot построен по модульному принципу
 • **Ответ бота**: подтверждение установки
 • **Логирование**: INFO начало, SUCCESS или ERROR
 
+### Авто-регистрация каналов
+• **Trigger**: событие `my_chat_member`
+• **Handler**: `handlers.channels.track_bot_in_chat`
+• **DB действия**: добавление/удаление записей в `channels`
+• **Логирование**: INFO добавление или удаление канала
+
 ### `/channels`
 • **Trigger**: команда от суперадмина
 • **Handler**: `handlers.channels.list_channels`
